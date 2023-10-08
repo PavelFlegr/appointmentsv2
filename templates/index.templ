@@ -1,0 +1,16 @@
+package templates
+
+templ Index() {
+    @Layout() {
+        <h1>Hello World</h1>
+        <form hx-post="/register" hx-target="#error">
+            <input name="email"/><input name="password"/><input name="password2"/><button>register</button>
+        </form>
+        <div id="error"></div>
+
+        <form hx-post="/login" hx-target="#error2">
+            <input name="email"/><input name="password"/><button>login</button>
+        </form>
+        <div id="error2"></div>       
+    }
+}

@@ -1,0 +1,214 @@
+package appointment
+
+import appointmentService "appointmentsv2/services/appointment"
+import "appointmentsv2/templates"
+import "fmt"
+
+templ Appointments(appointments []appointmentService.Appointment) {
+    @templates.Layout() {  
+        <div class="ui container">
+            <form class="ui form segment" hx-post="/manage/appointment" hx-target="#appointments" hx-swap="beforeend" hx-vals="js:timezone:Intl.DateTimeFormat().resolvedOptions().timeZone">
+                <div class="ui action input">
+                    <input placeholder="Name" name="name"/>
+                    <button class="ui primary button">Add appointment</button>
+                </div>
+            </form>
+            <table class="ui compact table" id="appointments">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                for _, appointment := range appointments {
+                    @AppointmentItem(appointment)
+                }
+                </tbody>
+            </table> 
+        </div> 
+    }
+}
+
+
+templ AppointmentItem(appointment appointmentService.Appointment) {
+    <tr class="appointment">
+        <td><a href={templ.URL(fmt.Sprintf("/manage/appointment/%v", appointment.Id))}>{appointment.Name}</a></td>
+        <td class="collapsing"><a href={templ.URL(fmt.Sprintf("/reserve/%v", appointment.Token))}>Link</a></td>
+        <td class="collapsing"><a href={templ.URL(fmt.Sprintf("/manage/appointment/%v/reservation", appointment.Id))}>Reservations</a></td>
+        <td class="collapsing"><button class="ui negative button" hx-swap="delete" hx-target="closest .appointment" hx-delete={fmt.Sprintf("/manage/appointment/%v", appointment.Id)}>Remove</button></td>
+    </tr>
+}
+
+templ Appointment(appointment appointmentService.Appointment, schedules []appointmentService.Schedule) {
+    @templates.Layout() {
+        <div class="ui container">
+            <a href="/manage/appointment">Appointments</a>
+            <div class="ui segment">
+                <h1>Appointment <span id="name">{appointment.Name}</span></h1>
+                <form class="ui form" hx-put={fmt.Sprintf("/manage/appointment/%v", appointment.Id)} hx-target="#name">
+                    <div class="field">
+                        <label>Name</label>
+                        <input name="name" value={appointment.Name}/>
+                    </div>
+                    <div class="field">
+                        <label>Instructions</label>
+                        <textarea name="instructions">{appointment.Instructions}</textarea>                
+                    </div>
+                    <button class="ui primary button">Update</button>
+                </form>
+            </div>
+            <div class="ui segment">
+                <h2>Add new schedule</h2>
+                <form class="ui form" hx-post={fmt.Sprintf("/manage/appointment/%v/schedule", appointment.Id)} hx-target="#schedules" hx-swap="beforeend" hx-vals="js:timezone:Intl.DateTimeFormat().resolvedOptions().timeZone">
+                    <h3>Date settings</h3>
+                    <div class="two fields">
+                        <div class="field">
+                            <label>Start Date</label>
+                            <input class="ui input" type="date" name="startDate"/>     
+                        </div>
+                        <div class="field">
+                            <label>Start Date</label>
+                            <input class="ui input" type="date" name="endDate"/>
+                        </div>
+                    </div>
+                    <h3>Working Hours</h3>
+                    <div class="two fields">
+                        <div class="field">
+                            <label>Start Time</label>
+                            <input class="ui input" type="time" name="startTime"/>
+                        </div>
+                        <div class="field">
+                            <label>End Time</label>
+                            <input class="ui input" type="time" name="endTime"/>
+                        </div>
+                    </div>
+                    <div class="two fields">
+                        <div class="field">
+                            <label>Length (in minutes)</label>
+                            <input class="ui input" type="number" step="1" min="1" required name="length"/>
+                        </div>
+                        <div class="field">
+                            <label>Spots</label>
+                            <input class="ui input" type="number" step="1" min="1" required name="spots"/>   
+                        </div>
+                    </div>
+                    <button class="ui submit primary button">Add</button>
+                </form>
+            </div>
+            <h2>Schedules</h2>
+            <table style="margin-bottom: 3em" class="ui compact table" id="schedules">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Length</th>
+                        <th>Spots</th>
+                        <th>Status</th>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                for _, schedule := range schedules {
+                    @ScheduleItem(schedule)
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+templ ScheduleItem(schedule appointmentService.Schedule) {
+    <tr class="schedule">
+        <td>{schedule.StartDate} - {schedule.EndDate}</td>
+        <td>{schedule.StartTime} - {schedule.EndTime}</td>
+        <td class="collapsing">{fmt.Sprint(schedule.Length)}</td>
+        <td class="collapsing">{fmt.Sprint(schedule.Spots)}</td>
+        <td class="collapsing">{schedule.Status}</td>
+        <td class="collapsing"><a href={templ.URL(fmt.Sprintf("/manage/appointment/%v/schedule/%v", schedule.AppointmentId, schedule.Id))}>detail</a></td>
+        <td class="collapsing"><button class="ui primary button" hx-post={fmt.Sprintf("/manage/appointment/%v/schedule/%v/activate", schedule.AppointmentId, schedule.Id)} disabled?={schedule.Status != "new"} hx-target="closest .schedule" hx-swap="outerHTML">Activate</button></td>
+        <td class="collapsing"><button class="ui negative button" hx-delete={fmt.Sprintf("/manage/appointment/%v/schedule/%v", schedule.AppointmentId, schedule.Id)} hx-target="closest .schedule" hx-swap="delete" disabled?={schedule.Status != "new"}>Delete</button></td>
+    </tr>
+}
+
+templ Schedule(schedule appointmentService.Schedule) {
+    @templates.Layout() {
+        <div class="ui container">
+            <a href={templ.URL(fmt.Sprintf("/manage/appointment/%v", schedule.AppointmentId))}>Back to appointment</a>
+            <div class="ui segment">
+                <h2>Edit Schedule</h2>
+                <form class="ui form" hx-put={fmt.Sprintf("/manage/appointment/%v/schedule/%v", schedule.AppointmentId)} hx-target="#error">
+                    <h3>Date settings</h3>
+                    <div class="two fields">
+                        <div class="field">
+                            <label>Start Date</label>
+                            <input class="ui input" type="date" name="startDate" value={schedule.StartDate}/>     
+                        </div>
+                        <div class="field">
+                            <label>Start Date</label>
+                            <input class="ui input" type="date" name="endDate" value={schedule.EndDate}/>
+                        </div>
+                    </div>
+                    <h3>Working Hours</h3>
+                    <div class="two fields">
+                        <div class="field">
+                            <label>Start Time</label>
+                            <input class="ui input" type="time" name="startTime" value={schedule.StartTime}/>
+                        </div>
+                        <div class="field">
+                            <label>End Time</label>
+                            <input class="ui input" type="time" name="endTime" value={schedule.EndTime}/>
+                        </div>
+                    </div>
+                    <div class="two fields">
+                        <div class="field">
+                            <label>Length (in minutes)</label>
+                            <input class="ui input" type="number" step="1" min="1" required name="length" value={fmt.Sprint(schedule.Length)}/>
+                        </div>
+                        <div class="field">
+                            <label>Spots</label>
+                            <input class="ui input" type="number" step="1" min="1" required name="spots" value={fmt.Sprint(schedule.Spots)}/>   
+                        </div>
+                    </div>
+                    <button class="ui submit primary button">Add</button>
+                </form>
+            </div>
+            <div id="error"></div>
+        </div>
+    }
+}
+
+templ Reservations(reservations []appointmentService.Reservation) {
+    @templates.Layout() {
+        <div class="ui container">
+            <table class="ui compact table">
+                <thead>
+                    <tr>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Email</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                for _, reservation := range reservations {
+                    <tr class="reservation">
+                        <td>{reservation.Start}</td>
+                        <td>{reservation.End}</td>
+                        <td>{reservation.FirstName}</td>
+                        <td>{reservation.LastName}</td>
+                        <td>{reservation.Email}</td>
+                        <td><button class="ui button negative" hx-target="closest .reservation" hx-swap="delete" hx-delete={templ.EscapeString(fmt.Sprintf("/manage/appointment/%v/reservation/%v", reservation.AppointmentId, reservation.Id))}>Cancel</button></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+}

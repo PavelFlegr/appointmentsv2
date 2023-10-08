@@ -1,0 +1,70 @@
+package appointment
+
+import appointmentService "appointmentsv2/services/appointment"
+import "appointmentsv2/templates"
+import "fmt"
+
+templ Reserve(groups []appointmentService.SlotGroup) {
+    @templates.Layout() {
+        <div class="ui container">
+            for _, group := range groups {
+                <h2 class="ui header center aligned">{group.Name}</h2>
+                <div class="ui grid">
+                    for _, slot := range *group.Slots {
+                        <div class="ui four wide column">
+                            <div class="ui attached segment">
+                                <div class="ui attached label">
+                                        Spots Left: {fmt.Sprint(slot.Free)}
+                                </div>
+                            </div>
+                            <div class="ui attached segment center aligned">
+                                <div class="ui header">
+                                    {slot.Start.Local().Format("15:04")} - {slot.End.Local().Format("15:04")}
+                                </div>
+                                <div class="ui">
+                                    <a class="ui primary button" href={templ.URL(fmt.Sprintf("/reserve/slot/%v", slot.Token))}>Reserve</a>
+                                </div>
+                            </div>
+                        </div>
+                    }           
+                </div>
+            }
+        </div>
+    }
+}
+
+templ ReserveSlot(slot appointmentService.Slot, appointmentToken string) {
+    @templates.Layout() {
+        <div class="ui container">
+            <div><a href={templ.URL(fmt.Sprintf("/reserve/%v", appointmentToken))}>Back to list</a></div>
+            <h1>Finish Reservation</h1>
+            <form class="ui form" hx-post={fmt.Sprintf("/reserve/slot/%v", slot.Token)} hx-vals="js:timezone:Intl.DateTimeFormat().resolvedOptions().timeZone">
+                <div class="two fields"> 
+                    <div class="field">
+                        <label>Date</label>                   
+                        <input value={slot.Start.Local().Format("2. 1. 2006")} disabled/>
+                    </div>  
+                    <div class="field">
+                        <label>Time</label>
+                        <input value={fmt.Sprintf("%v - %v", slot.Start.Local().Format("15:04"), slot.End.Local().Format("15:04"))} disabled/>
+                    </div>
+                </div>
+                <div class="three fields"> 
+                    <div class="field">
+                        <label>First Name</label>                   
+                        <input name="firstName"/>
+                    </div>  
+                    <div class="field">
+                        <label>Last Name</label>  
+                        <input name="lastName"/>
+                    </div>
+                    <div class="field">
+                        <label>Email</label>                  
+                        <input name="email"/>                   
+                    </div>
+                </div>
+                <button class="ui primary button">Confirm</button>
+            </form>
+        </div>
+    }
+}
